@@ -1,0 +1,188 @@
+# Zyn-tracker1
+Personal zyn tracking
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zyn Tracker</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 600px;
+      margin: 20px auto;
+      padding: 20px;
+      background: #f8f9fa;
+      color: #333;
+    }
+    h1 { text-align: center; color: #1a1a1a; }
+    .log-section {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      margin-bottom: 30px;
+    }
+    .buttons {
+      display: flex;
+      gap: 15px;
+      margin: 20px 0;
+      flex-wrap: wrap;
+    }
+    button {
+      flex: 1;
+      padding: 14px;
+      font-size: 18px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      min-width: 120px;
+    }
+    .mg3 { background: #4CAF50; color: white; }
+    .mg6 { background: #f44336; color: white; }
+    .craving-btn {
+      background: #2196F3;
+      color: white;
+      padding: 10px;
+      margin: 5px;
+    }
+    .active-craving { background: #0D47A1 !important; }
+    .history {
+      background: white;
+      padding: 15px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .entry {
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+    .entry:last-child { border-bottom: none; }
+    .time { font-weight: bold; }
+    .mg { font-weight: bold; }
+    .craving { color: #666; }
+    .summary {
+      text-align: center;
+      margin: 20px 0;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Zyn Tracker</h1>
+
+  <div class="log-section">
+    <h2>Log a Use</h2>
+    <p><strong>Step 1:</strong> How strong were your cravings right before using?</p>
+    <div class="buttons" id="craving-buttons">
+      <button class="craving-btn" data-level="1">1 (None)</button>
+      <button class="craving-btn" data-level="2">2 (Mild)</button>
+      <button class="craving-btn" data-level="3">3 (Moderate)</button>
+      <button class="craving-btn" data-level="4">4 (Strong)</button>
+      <button class="craving-btn" data-level="5">5 (Intense)</button>
+    </div>
+
+    <p><strong>Step 2:</strong> Which strength did you use?</p>
+    <div class="buttons">
+      <button id="log-3mg" class="mg3" disabled>Log 3mg</button>
+      <button id="log-6mg" class="mg6" disabled>Log 6mg</button>
+    </div>
+  </div>
+
+  <div class="summary" id="summary">
+    No uses logged yet.
+  </div>
+
+  <div class="history" id="history">
+    <h2>History</h2>
+    <div id="entries"></div>
+  </div>
+
+  <script>
+    const storageKey = 'zynTrackerData';
+    let selectedCraving = null;
+
+    let data = JSON.parse(localStorage.getItem(storageKey)) || [];
+
+    function saveData() {
+      localStorage.setItem(storageKey, JSON.stringify(data));
+      render();
+    }
+
+    function render() {
+      const entriesDiv = document.getElementById('entries');
+      entriesDiv.innerHTML = '';
+
+      if (data.length === 0) {
+        document.getElementById('summary').textContent = 'No uses logged yet.';
+        return;
+      }
+
+      const total = data.length;
+      const mg3 = data.filter(e => e.mg === 3).length;
+      const mg6 = data.filter(e => e.mg === 6).length;
+      document.getElementById('summary').innerHTML = `
+        <strong>${total}</strong> total uses &nbsp;|&nbsp;
+        <span style="color:#4CAF50">${mg3} × 3mg</span> &nbsp;|&nbsp;
+        <span style="color:#f44336">${mg6} × 6mg</span>
+      `;
+
+      data.slice().reverse().forEach(entry => {
+        const div = document.createElement('div');
+        div.className = 'entry';
+        div.innerHTML = `
+          <span class="time">${entry.time}</span>
+          <span class="mg" style="color:${entry.mg === 3 ? '#4CAF50' : '#f44336'}">${entry.mg}mg</span>
+          <span class="craving">Craving: ${entry.craving}/5</span>
+        `;
+        entriesDiv.appendChild(div);
+      });
+    }
+
+    document.querySelectorAll('.craving-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.craving-btn').forEach(b => b.classList.remove('active-craving'));
+        btn.classList.add('active-craving');
+        selectedCraving = parseInt(btn.dataset.level);
+        document.getElementById('log-3mg').disabled = false;
+        document.getElementById('log-6mg').disabled = false;
+      });
+    });
+
+    document.getElementById('log-3mg').addEventListener('click', () => logUse(3));
+    document.getElementById('log-6mg').addEventListener('click', () => logUse(6));
+
+    function logUse(mg) {
+      if (!selectedCraving) {
+        alert('Please select your craving level first!');
+        return;
+      }
+
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) + 
+                      ' on ' + now.toLocaleDateString();
+
+      data.push({
+        time: timeStr,
+        mg: mg,
+        craving: selectedCraving,
+        timestamp: now.getTime()
+      });
+
+      saveData();
+
+      selectedCraving = null;
+      document.querySelectorAll('.craving-btn').forEach(b => b.classList.remove('active-craving'));
+      document.getElementById('log-3mg').disabled = true;
+      document.getElementById('log-6mg').disabled = true;
+
+      alert(`Logged ${mg}mg at ${timeStr} (craving ${selectedCraving}/5)`);
+    }
+
+    render();
+  </script>
+</body>
+</html>
